@@ -1,4 +1,5 @@
 #include<Stepper.h>
+#include<Servo.h>
 
 #define StepperAngle 2037
 Stepper M28BYJ(StepperAngle, 11, 9, 10, 8);
@@ -11,6 +12,10 @@ Stepper M28BYJ(StepperAngle, 11, 9, 10, 8);
 #define trigPin3 6
 #define echoPin3 7
 
+#define servoPin 12
+Servo servo;
+int angle = 0;
+
 void setup() {
   pinMode(echoPin1, INPUT);
   pinMode(trigPin1, OUTPUT);
@@ -20,6 +25,7 @@ void setup() {
   pinMode(trigPin3, OUTPUT);
   Serial.begin(9600);
   M28BYJ.setSpeed(15);
+  servo.attach(servoPin);
 }
 
 void loop() {
@@ -50,7 +56,7 @@ void loop() {
       if(volume1 <80 && volume2 <80){
         //Serial.print("80이하");
         //Serial.println(volume1); 
-        delay(1000);
+        //delay(1000);
         //뚜껑제어 
         digitalWrite(trigPin3, LOW);
         delayMicroseconds(2);
@@ -62,6 +68,21 @@ void loop() {
         distance3 = duration3*17/1000;
         Serial.print("뚜껑과의 거리 : ");
         Serial.println(distance3);
+        
+        if(distance3 <=20){
+          Serial.print("뚜껑과의 거리 : ");
+          Serial.println(distance3);
+          angle = 90;
+          servo.write(angle);
+          delay(5000);
+          angle=0;
+          servo.write(angle);
+        }
+        else{
+          angle=0;
+          servo.write(angle);
+        }
+        
       }
 
       else if(volume1 >= 80 || volume2>=80){
