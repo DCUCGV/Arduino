@@ -1,4 +1,5 @@
-#include<Stepper.h>
+//#include<Stepper.h>
+#include <AccelStepper.h>
 #include<Servo.h>
 #include<SoftwareSerial.h>
 
@@ -6,9 +7,9 @@
 SoftwareSerial Bluetooth(9,8);
 
 //Stepp Motor
-#define StepperAngle 2037
-Stepper M28BYJ1(StepperAngle, 13, 11, 12, 10);
-Stepper M28BYJ2(StepperAngle, A2, A4, A3, A5);
+#define StepperAngle 8
+AccelStepper M28BYJ1(StepperAngle, 13, 11, 12, 10);
+AccelStepper M28BYJ2(StepperAngle, A2, A4, A3, A5);
 
 //Ultrasonic sensor
 //1
@@ -55,11 +56,11 @@ void loop() {
       
       if(cmd == '1'){
         Serial.println("ok");
-        M28BYJ1.step(StepperAngle),M28BYJ2.step(StepperAngle);
+        M28BYJ1.move(StepperAngle),M28BYJ2.move(StepperAngle);
         delay(1000);
     
-        M28BYJ1.step(-StepperAngle);
-        M28BYJ2.step(-StepperAngle);
+        M28BYJ1.move(-StepperAngle);
+        M28BYJ2.move(-StepperAngle);
         delay(1000);
       }
     }
