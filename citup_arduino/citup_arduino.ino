@@ -1,15 +1,16 @@
-//#include<Stepper.h>
-#include <AccelStepper.h>
 #include<Servo.h>
 #include<SoftwareSerial.h>
+#include <AccelStepper.h>
+#include <MultiStepper.h>
 
 //BLE
 SoftwareSerial Bluetooth(9,8);
 
 //Stepp Motor
 #define StepperAngle 8
-AccelStepper M28BYJ1(StepperAngle, 13, 11, 12, 10);
-AccelStepper M28BYJ2(StepperAngle, A2, A4, A3, A5);
+AccelStepper stepper1(StepperAngle, 10, 12, 11, 13);
+AccelStepper stepper2(StepperAngle, A2, A4, A3, A5);
+MultiStepper steppers;
 
 //Ultrasonic sensor
 //1
@@ -31,49 +32,32 @@ AccelStepper M28BYJ2(StepperAngle, A2, A4, A3, A5);
 
 //Servo Motor
 Servo servo1, servo2;
-int angle = 0;
-
+//int angle = 0;
+boolean isNear = false;
 void setup() {
+  Serial.begin(9600);
+  Bluetooth.begin(9600);
   pinMode(echoPin1, INPUT);
   pinMode(trigPin1, OUTPUT);
   pinMode(echoPin2, INPUT);
   pinMode(trigPin2, OUTPUT);
   pinMode(echoPin3, INPUT);
   pinMode(trigPin3, OUTPUT);
-  pinMode(servoPin1,OUTPUT);
-  pinMode(servoPin2,OUTPUT);
-  Serial.begin(9600);
-  Bluetooth.begin(9600);
-  M28BYJ1.setSpeed(15);
-  M28BYJ2.setSpeed(15);
+
+  stepper1.setMaxSpeed(1000);
+  stepper2.setMaxSpeed(1000);
+  stepper1.setCurrentPosition(0);
+  stepper2.setCurrentPosition(0);
+  steppers.addStepper(stepper1);
+  steppers.addStepper(stepper2);
+  
   servo1.attach(servoPin1);
   servo2.attach(servoPin2);
+  servo1.write(0);
+  servo2.write(0);
 }
 
 void loop() {
-  if(Bluetooth.available()){
-      char cmd = Bluetooth.read();
-      
-      if(cmd == '1'){
-        Serial.println("ok");
-        M28BYJ1.move(StepperAngle),M28BYJ2.move(StepperAngle);
-        delay(1000);
-    
-        M28BYJ1.move(-StepperAngle);
-        M28BYJ2.move(-StepperAngle);
-        delay(1000);
-      }
-    }
-  digitalWrite(servoPin1,LOW);
-  delayMicroseconds(2);
-  digitalWrite(servoPin1, HIGH);
-  delayMicroseconds(10);
-
-  digitalWrite(servoPin2,LOW);
-  delayMicroseconds(2);
-  digitalWrite(servoPin2, HIGH);
-  delayMicroseconds(10);
-
   //초음파센서 사용을 위한 변수 선언 
   float duration1, distance1, volume1, duration2, distance2, volume2, duration3, distance3;
 
@@ -99,44 +83,61 @@ void loop() {
   duration2 = pulseIn(echoPin2, HIGH);
   distance2 = duration2*17/1000;
   volume2 = (30-distance2)/30*100;
-//  Serial.println(volume2);
-//  Serial.println(volume1); //측정된 물체로부터 거리값(cm값)을 보여줍니다.
-//  Serial.println(volume2); //측정된 물체로부터 거리값(cm값)을 보여줍니다.
-////      Serial.println(); 
-  if(volume1 <80 && volume2 <80){
-    //Serial.print("80이하");
-    //Serial.println(volume1); 
-    //delay(1000);
-    //80 미만 일때 뚜껑제어(열림) 
-    digitalWrite(trigPin3, LOW);
-    delayMicroseconds(2);
-    digitalWrite(trigPin3, HIGH);
-    delayMicroseconds(10);
-    digitalWrite(trigPin3, LOW);
-  
-    duration3 = pulseIn(echoPin3, HIGH);
-    distance3 = duration3*17/1000;
 
+  //ultra3 입구 거리 측정
+  digitalWrite(trigPin3, LOW);
+  delayMicroseconds(2); 
+  digitalWrite(trigPin3, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trigPin3, LOW);
+
+  duration3 = pulseIn(echoPin3, HIGH);
+  distance3 = ((34000*duration3)/1000000)/2;
+  if(volume1 <80.0 && volume2 <80.0){
+    //80 미만 일때 뚜껑제어(열림)
     //쓰레기통 입구의 20cm 이내에 있을 시 열림
-    if(distance3 <=20){
-//      Serial.print("입구와의 거리 : ");
-//      Serial.println(distance3);
-      angle = 90;
-      servo1.write(angle);
-      servo2.write(angle);
-      delay(2000);
+    Serial.print("입구와의 거리 : ");
+    Serial.println(distance3);
+  
+    if(distance3 <=20 ){
+//      if(!isNear){
+//        isNear = true;
+      servo1.write(0);
+      servo2.write(360);
+      delay(6000);
+//      }
     }
-    //20cm 보다 멀리 있을 시 뚜껑 안열림
     else{
-      angle=0;
-      servo1.write(angle);
-      servo2.write(angle);
+//      if(isNear){
+//        isNear=false;
+      servo1.write(90);
+      servo2.write(90);
+      delay(1000);     
+//     }
+    }
+  }
+  
+  else if(volume1 >=80.0 && volume2 >=80.0){
+//    servo1.detach();
+//    servo2.detach();
+    long positions[2];
+    if(Bluetooth.available()){
+        char cmd = Bluetooth.read();
+        if(cmd == '1'){
+          Serial.println("ok");
+          positions[0] = 5200;
+          positions[1] = -5200;
+          steppers.moveTo(positions);
+          steppers.runSpeedToPosition();
+          delay(2000); 
+           
+          positions[0] = -1;
+          positions[1] = 1;
+          steppers.moveTo(positions);
+          steppers.runSpeedToPosition();
+          delay(3000);
+        }
     }
     
   }
-//  if(volume1 >=80 || volume2 >=80){
-////    Serial.println(volume1);
-////    Serial.println(volume2);
-    
-//  }
 }
